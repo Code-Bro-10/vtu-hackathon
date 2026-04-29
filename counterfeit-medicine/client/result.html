@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Result — MedVerify</title>
+  <!-- PWA / Mobile meta -->
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MedVerify">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .result-wrapper { max-width: 680px; }
+
+    /* Detail cards grid */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+
+    .detail-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .detail-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
+    .detail-card-icon {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-card-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .detail-card-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .detail-card.expiry-ok  { border-color: rgba(16,185,129,0.3); }
+    .detail-card.expiry-ok .detail-card-value { color: #34d399; }
+    .detail-card.expiry-warn { border-color: rgba(239,68,68,0.35); }
+    .detail-card.expiry-warn .detail-card-value { color: #f87171; }
+
+    /* Status banner */
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      border-radius: 14px;
+      margin-bottom: 0.25rem;
+    }
+
+    .status-banner.genuine {
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.35);
+    }
+
+    .status-banner.fake {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.35);
+    }
+
+    .status-emoji { font-size: 2.5rem; }
+    .status-text-group {}
+    .status-main { font-size: 1.25rem; font-weight: 800; }
+    .genuine .status-main { color: #34d399; }
+    .fake .status-main { color: #f87171; }
+    .status-sub { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    /* Download button */
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 140px;
+      padding: 0.85rem 1.5rem;
+      background: linear-gradient(135deg, #1e293b, #334155);
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .btn-download:hover {
+      background: linear-gradient(135deg, #334155, #475569);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Mobile install banner */
+    #install-banner {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.9rem 1.25rem;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.35);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      animation: fadeIn 0.4s ease;
+    }
+    #install-banner .install-icon { font-size: 1.5rem; }
+    #install-banner .install-text { flex: 1; }
+    #install-banner .install-text strong { display: block; font-size: 0.9rem; }
+    #install-banner .install-text span { color: var(--text-muted); font-size: 0.8rem; }
+    #btn-install {
+      padding: 0.5rem 1rem;
+      background: linear-gradient(135deg, #6c63ff, #4f46e5);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #btn-dismiss-install {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem;
+    }
+
+    @media (max-width: 560px) {
+      .detail-grid { grid-template-columns: 1fr; }
+      .status-banner { flex-direction: row; }
+      .status-main { font-size: 1.05rem; }
+    }
+
+    /* ── PRINT / PDF STYLES ─────────────────────────────────── */
+    @media print {
+      body {
+        background: white !important;
+        color: #111 !important;
+        font-family: 'Inter', Arial, sans-serif;
+      }
+      body::before { display: none !important; }
+      header, .nav-links, #install-banner,
+      .btn, .btn-download, button { display: none !important; }
+      main { padding: 0 !important; }
+
+      .glass-card {
+        background: white !important;
+        border: 1px solid #e5e7eb !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        border-radius: 12px !important;
+        padding: 1.5rem !important;
+      }
+
+      .status-banner.genuine {
+        background: #f0fdf4 !important;
+        border-color: #86efac !important;
+        color: #166534 !important;
+      }
+      .status-banner.fake {
+        background: #fef2f2 !important;
+        border-color: #fca5a5 !important;
+        color: #991b1b !important;
+      }
+      .status-main { color: #166534 !important; }
+      .fake .status-main { color: #991b1b !important; }
+      .status-sub { color: #6b7280 !important; }
+
+      .detail-card {
+        background: #f9fafb !important;
+        border-color: #e5e7eb !important;
+        border-radius: 8px !important;
+      }
+      .detail-card-label { color: #9ca3af !important; }
+      .detail-card-value { color: #111827 !important; }
+      .detail-card.expiry-ok { border-color: #86efac !important; }
+      .detail-card.expiry-ok .detail-card-value { color: #16a34a !important; }
+      .detail-card.expiry-warn { border-color: #fca5a5 !important; }
+      .detail-card.expiry-warn .detail-card-value { color: #dc2626 !important; }
+
+      .blockchain-box {
+        background: #f5f3ff !important;
+        border-color: #c4b5fd !important;
+      }
+      .blockchain-label { color: #7c3aed !important; }
+      .blockchain-hash { color: #6b7280 !important; }
+
+      .print-header { display: flex !important; }
+
+      #fda-info-container > div {
+        background: #f0f9ff !important;
+        border-color: #bae6fd !important;
+        color: #0c4a6e !important;
+      }
+    }
+
+    /* Shown only when printing */
+    .print-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .print-logo { font-size: 1.2rem; font-weight: 800; color: #6c63ff; }
+    .print-timestamp { font-size: 0.75rem; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="logo-icon">💊</span> MedVerify</div>
+    <div class="nav-links" id="nav-links"></div>
+  </header>
+  <main>
+    <div class="result-wrapper" style="width:100%;max-width:680px;margin:2rem auto;animation:slideUp 0.4s ease;">
+
+      <!-- Mobile PWA Install Banner -->
+      <div id="install-banner">
+        <span class="install-icon">📲</span>
+        <div class="install-text">
+          <strong>Add MedVerify to Home Screen</strong>
+          <span>Scan medicines offline, anytime</span>
+        </div>
+        <button id="btn-install">Install</button>
+        <button id="btn-dismiss-install" title="Dismiss">✕</button>
+      </div>
+
+      <div id="result-container">
+        <div class="glass-card" style="text-align:center;padding:3rem;">
+          <div style="font-size:2rem;margin-bottom:1rem;">⏳</div>
+          <p style="color:var(--text-muted)">Loading result...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="js/app.js"></script>
+  <script>
+    // ── PWA Install Prompt ──────────────────────────────────────────
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('install-banner').style.display = 'flex';
+    });
+
+    document.getElementById('btn-install')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('install-banner').style.display = 'none';
+    });
+
+    document.getElementById('btn-dismiss-install')?.addEventListener('click', () => {
+      document.getElementById('install-banner').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
